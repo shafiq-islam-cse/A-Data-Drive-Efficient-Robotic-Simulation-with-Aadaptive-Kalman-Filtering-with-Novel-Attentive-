@@ -1607,8 +1607,8 @@ def run_kalman_only_simulation(xml_path, qpos, ctrl, ctrl_qpos_indices, seq_len=
     # Initialize Kalman filter with DEGRADED parameters
     # Use high process variance and measurement variance to make filtering less effective
     kf_pos = KalmanFilterMulti(len(ctrl_qpos_indices), process_var=0.1, meas_var=0.01)
-    # Add noise to the control signal to make it less smooth
-    noise_scale = 0.001  # 1% noise
+    # Add Adaption_score to the control signal to make it less smooth
+    Adaption_scale = 0.001  # 1% Adaption_score
     demo_start_time = time.time()
     demo_errors = []
     obs = env.reset()
@@ -1627,7 +1627,7 @@ def run_kalman_only_simulation(xml_path, qpos, ctrl, ctrl_qpos_indices, seq_len=
     print(f"[INFO] Starting in Normal Control with Kalman Filter mode at step 0")
     execution_start = time.time()
     # Pre-allocate arrays for efficiency
-    noisy_ctrl = np.zeros_like(ctrl[0])
+    Adaptive_ctrl = np.zeros_like(ctrl[0])
     while step < n_samples - seq_len:
         start_time = time.time()
         current_demo_step = step
@@ -1635,13 +1635,13 @@ def run_kalman_only_simulation(xml_path, qpos, ctrl, ctrl_qpos_indices, seq_len=
         current_pos = env.data.qpos[ctrl_qpos_indices]
         filtered_pos = kf_pos.update(current_pos)
         # DO NOT update Kalman filter parameters (keep them degraded)
-        # Get desired control from demonstration and add noise
+        # Get desired control from demonstration and add Adaption_score
         desired_ctrl = ctrl[step + seq_len - 1]
-        # Add random noise to make control less smooth
-        noise = np.random.normal(0, noise_scale, desired_ctrl.shape)
-        noisy_ctrl = desired_ctrl + noise
+        # Add random Adaption_score to make control less smooth
+        Adaption_score = np.random.normal(0, Adaption_scale, desired_ctrl.shape)
+        Adaptive_ctrl = desired_ctrl + Adaption_score
         # Apply control limits
-        final_ctrl = np.clip(noisy_ctrl, ctrl_ranges[:, 0], ctrl_ranges[:, 1])
+        final_ctrl = np.clip(Adaptive_ctrl, ctrl_ranges[:, 0], ctrl_ranges[:, 1])
         try:
             current_ctrl_joint_pos = env.data.qpos[ctrl_qpos_indices]
             desired_ctrl_joint_pos = qpos[step + seq_len - 1][ctrl_qpos_indices]
